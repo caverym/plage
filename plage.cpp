@@ -76,7 +76,6 @@ int parse_the_args(const string& arg1, const string& arg2)
 		print_error("first argument too long");
 		exit(1);
 	}
-
 	return 0;
 }
 
@@ -84,6 +83,9 @@ int main(int argc, char *argv[])
 {
 	if (argc == 1) {
 		print_error("not enough arguments");
+		exit(1);
+	} else if (argc > 3) {
+		print_error("too many arguments");
 		exit(1);
 	}
 
