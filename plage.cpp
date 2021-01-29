@@ -25,7 +25,7 @@ int print_message(const char *message, int type)
 	case ERR:
 		return fprintf(stderr, RED "Error:" reset " %s\n", message);
 	case WARN:
-		return fprintf(stdout, YEL "Warning:" reset " %s\n", message);
+		return fprintf(stderr, YEL "Warning:" reset " %s\n", message);
 	}
 	return 1;
 }
