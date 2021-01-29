@@ -5,6 +5,24 @@
 #include <sys/wait.h>
 using namespace std;
 
+int to_cache()
+{
+	string home = getenv("HOME");
+	string cache = home + "/.cache/plage";
+	char char_cache[100];
+
+	strcpy(char_cache, cache.c_str());
+
+	int i = chdir(char_cache);
+	if (i != 0) {
+		fprintf(stderr, "Error: run `mkdir ~/.cache/plage`\n");
+		exit(1);
+	}
+	printf("Entered directory: %s\n", getcwd(NULL, 4096));
+
+	return 0;
+}
+
 int clone_aur(int argc, char *argv[])
 {
 	string url = "https://aur.archlinux.org/";
@@ -42,6 +60,8 @@ int main(int argc, char *argv[])
 	if (argc == 1)
 		return 1;
 
+	
+	to_cache();
 	clone_aur(argc, argv);
 	move_in(argv[2]);
 	make_the_package(argv[1]);
