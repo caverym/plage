@@ -20,14 +20,13 @@ int print_message(const char *message, int type)
 {
 
 	switch (type) {
-		case MSG:
-			return fprintf(stdout, CYN "Plage:" reset " %s\n", message);
-		case ERR:
-			return fprintf(stderr, RED "Error:" reset " %s\n", message);
-		case WARN:
-			return fprintf(stdout, YEL "Warning:" reset " %s\n", message);
+	case MSG:
+		return fprintf(stdout, CYN "Plage:" reset " %s\n", message);
+	case ERR:
+		return fprintf(stderr, RED "Error:" reset " %s\n", message);
+	case WARN:
+		return fprintf(stdout, YEL "Warning:" reset " %s\n", message);
 	}
-
 	return 1;
 }
 
@@ -70,8 +69,8 @@ int clone_aur(char **argv)
 
 	wait(&status);
 
-	if (status == 128)
-		print_message("Git exited with code 128", WARN);
+	if (status != 0)
+		print_message("Git exited with an error", WARN);
 
 	return 0;
 }
