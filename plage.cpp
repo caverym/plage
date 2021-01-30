@@ -7,6 +7,7 @@
 #include <argp.h>
 using namespace std;
 
+#define WHT "\e[0;97m"
 #define RED "\e[1;91m"
 #define CYN "\e[1;96m"
 #define YEL "\e[1;93m"
@@ -15,6 +16,7 @@ using namespace std;
 #define MSG 0
 #define ERR 1
 #define WARN 2
+#define QST 3
 
 const char *argp_program_version = "version 0.1";
 const char *argp_program_bug_address = "report bugs to Avery <averylapine@gmail.com>";
@@ -34,6 +36,8 @@ int print_message(const char *message, int type)
 			return fprintf(stderr, RED "Error:" reset " %s\n", message);
 		case WARN:
 			return fprintf(stderr, YEL "Warning:" reset " %s\n", message);
+		case QST:
+			return fprintf(stderr, WHT "Edit:" reset " %s", message);
 	}
 	return 1;
 }
@@ -140,6 +144,59 @@ int remove_package(const string& package)
 	return 0;
 }
 
+int edit_package()
+{
+	if (!pkg_check("PKGBUILD")) {
+		print_message("PKGBUILD not found", ERR);
+		exit(1);
+	}
+
+	string path = "/usr/bin/";
+	string editor;
+	if (getenv("EDITOR") == nullptr) {
+		print_message("no editor set", ERR);
+		exit(1);
+	} else {
+		editor = getenv("EDITOR");
+	}
+
+	char char_editor[10];
+	char char_path[18];
+	path = path + editor;
+	strcpy(char_editor, editor.c_str());
+	strcpy(char_path, path.c_str());
+
+	if (!pkg_check(path)) {
+		print_message("editor not found", ERR);
+		exit(1);
+	}
+
+	int status;
+
+	print_message("executing editor", MSG);
+	if (fork() == 0)
+		execl(char_path, char_editor, "PKGBUILD", NULL);
+
+	wait(&status);
+	if (status != 0) {
+		print_message("editor exited with an error", WARN);
+	}
+	return 0;
+}
+
+inline bool ask_to_edit()
+{
+	char buffer[200];
+	print_message("would you like to edit the PKGBUILD? [y/n]", QST);
+	while (true)
+	{
+		fgets(buffer, sizeof(buffer), stdin);
+		if (buffer[0] == 'y')
+			return true;
+		return false;
+	}
+}
+
 static int parse_opt(int key, char *arg, struct argp_state *state)
 {
 	switch (key) {
@@ -148,6 +205,8 @@ static int parse_opt(int key, char *arg, struct argp_state *state)
 			break;
 		case 'b':
 			change_directory(arg);
+			if (ask_to_edit())
+				edit_package();
 			makepkg_exec(arg, "-s");
 			break;
 		case 'i':
@@ -161,6 +220,10 @@ static int parse_opt(int key, char *arg, struct argp_state *state)
 			clone_package(arg);
 			change_directory(arg);
 			makepkg_exec(arg, "-si");
+			break;
+		case 'e':
+			change_directory(arg);
+			edit_package();
 			break;
 	}
 	return 0;
@@ -179,16 +242,18 @@ int main(int argc, char **argv)
 
 	struct argp_option options[] =
 		{
-			{"download", 'd', "package", 0, "Download a package"},
 			{"build", 'b', "package", 0, "Build a package"},
+			{"download", 'd', "package", 0, "Download a package"},
+			{"edit", 'e', "package", 0, "Edit a package PKGBUILD"},
 			{"install", 'i', "package", 0, "Install a package"},
-			{"remove", 'r', "package", 0, "Remove a package"},
 			{"quick", 'q', "package", 0, "Download, build and install a package"},
+			{"remove", 'r', "package", 0, "Remove a package"},
 			{0}
 		};
 
 	struct argp argp = {options, parse_opt};
 	ret = argp_parse(&argp, argc, argv, 0, 0, 0);
 
+	print_message("exiting", MSG);
 	return ret;
 }
