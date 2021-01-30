@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <argp.h>
 using namespace std;
 
 #define RED "\e[1;91m"
@@ -15,17 +16,24 @@ using namespace std;
 #define ERR 1
 #define WARN 2
 
+const char *argp_program_version = "version 0.1";
+const char *argp_program_bug_address = "report bugs to Avery <averylapine@gmail.com>";
+
+struct plage {
+    bool inside_package;
+}; struct plage la_plage;
+
 // TYPE 0 is message, 1 is error, 2 is warning
 int print_message(const char *message, int type)
 {
 
 	switch (type) {
-	case MSG:
-		return fprintf(stdout, CYN "Plage:" reset " %s\n", message);
-	case ERR:
-		return fprintf(stderr, RED "Error:" reset " %s\n", message);
-	case WARN:
-		return fprintf(stderr, YEL "Warning:" reset " %s\n", message);
+		case MSG:
+			return fprintf(stdout, CYN "Plage:" reset " %s\n", message);
+		case ERR:
+			return fprintf(stderr, RED "Error:" reset " %s\n", message);
+		case WARN:
+			return fprintf(stderr, YEL "Warning:" reset " %s\n", message);
 	}
 	return 1;
 }
@@ -36,31 +44,45 @@ inline bool pkg_check(const string& name)
 	return (stat(name.c_str(), &buffer) == 0);
 }
 
-int to_cache()
+void enter_cache()
 {
 	string home = getenv("HOME");
-	string cache = home + "/.cache/plage";
-	char char_cache[100];
-	strcpy(char_cache, cache.c_str());
+	string str_cache = home + "/.cache/plage";
+	char cache[100];
+	strcpy(cache, str_cache.c_str());
 
-	int i = chdir(char_cache);
+	int i = chdir(cache);
 	if (i != 0) {
-		print_message("making cache directory", MSG);
-		mkdir(char_cache, 755);
-		chdir(char_cache);
+		print_message("failed to enter cache", WARN);
+		print_message("creating cache", MSG);
+		if (mkdir(cache, 755) != 0) {
+			print_message("failed to create cache directory", ERR);
+			exit(1);
+		}
+		chdir(cache);
+	}
+}
+
+int change_directory(char *directory)
+{
+	if (la_plage.inside_package)
+		return 0;
+
+	int i = chdir(directory);
+	if (i != 0) {
+		print_message("can not change into package directory", ERR);
+		exit(1);
 	}
 
-	print_message("entered cache directory", MSG);
+	la_plage.inside_package = true;
 	return 0;
 }
 
-int clone_aur(char **argv)
+int clone_package(const string& package)
 {
-	string url = "https://aur.archlinux.org/";
-	string name = argv[2];
-	string full = url + name + ".git";
-	char command[100];
-	strcpy(command, full.c_str());
+	string url = "https://aur.archlinux.org/" + package + ".git";
+	char command[256];
+	strcpy(command, url.c_str());
 	int status;
 
 	print_message("executing git", MSG);
@@ -68,70 +90,105 @@ int clone_aur(char **argv)
 		execl("/usr/bin/git", "git", "clone", command, NULL);
 
 	wait(&status);
-
 	if (status != 0)
 		print_message("Git exited with an error", WARN);
 
 	return 0;
 }
 
-int move_in(char *name)
+int makepkg_exec(const string& package, const char *flags)
 {
-	int i = chdir(name);
-	if (i != 0) {
-		print_message("can not change into AUR directory", ERR);
-		exit(1);
-	}
-	return 0;
-}
-
-int make_the_package(char keys[10], const string& name)
-{
-	if (!pkg_check(name)) {
-		print_message("failed to find PKGBUILD", ERR);
+	if (!pkg_check("PKGBUILD")) {
+		print_message("PKGBUILD not found", ERR);
 		exit(1);
 	}
 
-	print_message("executing makepkg", 0);
+	int status;
+
+	print_message("executing makepkg", MSG);
 	if (fork() == 0)
-		execl("/usr/bin/makepkg", "makepkg", keys, NULL);
+		execl("/usr/bin/makepkg", "makepkg", flags, NULL);
 
-	wait(nullptr);
+	wait(&status);
+	if (status != 0) {
+		print_message("makepkg error", ERR);
+		exit(1);
+	}
 	return 0;
 }
 
-int parse_the_args(const string& arg1, const string& arg2)
+int remove_package(const string& package)
 {
-	if (arg1.length() > 10) {
-		print_message("first argument invalid", ERR);
+	if (geteuid() != 0) {
+		print_message("you must be root", ERR);
 		exit(1);
 	}
 
+	char charpkg[50];
+	strcpy(charpkg, package.c_str());
+
+	int status;
+	if (fork() == 0) {
+		execl("/usr/bin/pacman", "pacman", "-R", charpkg, NULL);
+	}
+
+	wait(&status);
+	if (status != 0) {
+		print_message("pacman exited with an error", ERR);
+		exit(1);
+	}
 	return 0;
 }
 
-int main(int argc, char *argv[])
+static int parse_opt(int key, char *arg, struct argp_state *state)
+{
+	switch (key) {
+		case 'd':
+			clone_package(arg);
+			break;
+		case 'b':
+			change_directory(arg);
+			makepkg_exec(arg, "-s");
+			break;
+		case 'i':
+			change_directory(arg);
+			makepkg_exec(arg, "-i");
+			break;
+		case 'r':
+			remove_package(arg);
+			break;
+		case 'q':
+			clone_package(arg);
+			change_directory(arg);
+			makepkg_exec(arg, "-si");
+			break;
+	}
+	return 0;
+}
+
+int main(int argc, char **argv)
 {
 	if (argc == 1) {
 		print_message("not enough arguments", ERR);
-		exit(1);
-	}
-	if (argc > 3) {
-		print_message("too many arguments", ERR);
-		exit(1);
-	}
-	if (argv[2] == nullptr) {
-		print_message("not enough arguments", ERR);
-		exit(1);
+		return 1;
 	}
 
-	parse_the_args(argv[1], argv[2]);
-	to_cache();
-	clone_aur(&*argv);
-	move_in(argv[2]);
-	make_the_package(argv[1], "PKGBUILD");
+	enter_cache();
 
-	print_message("exiting", MSG);
+	int ret;
 
-	return 0;
+	struct argp_option options[] =
+		{
+			{"download", 'd', "package", 0, "Download a package"},
+			{"build", 'b', "package", 0, "Build a package"},
+			{"install", 'i', "package", 0, "Install a package"},
+			{"remove", 'r', "package", 0, "Remove a package"},
+			{"quick", 'q', "package", 0, "Download, build and install a package"},
+			{0}
+		};
+
+	struct argp argp = {options, parse_opt};
+	ret = argp_parse(&argp, argc, argv, 0, 0, 0);
+
+	return ret;
 }
