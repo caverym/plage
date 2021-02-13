@@ -2,3 +2,8 @@ cmake-build-debug
 CMakeLists.txt
 plage
 .idea
+
+
+# Added by cargo
+
+/target
