@@ -5,6 +5,9 @@ struct Plage {
     clone: bool,
     build: bool,
     install: bool,
+    remove: bool,
+    list: bool,
+    clean: bool,
 }
 
 fn find_ops(args: &Vec<String>) -> Plage {
@@ -13,9 +16,21 @@ fn find_ops(args: &Vec<String>) -> Plage {
     let mut clone: bool = false;
     let mut build: bool = false;
     let mut install: bool = false;
+    let mut remove: bool = false;
+    let mut list: bool = false;
+    let mut clean: bool = false;
 
     for i in 1..len {
         match ops[i] {
+            'l' => {
+                list = true; 
+                break;
+            }
+            'r' => {
+                remove = true;
+                break;
+            }
+            'c' => clean = true,
             'd' => clone = true,
             'b' => build = true,
             'i' => install = true,
@@ -27,12 +42,15 @@ fn find_ops(args: &Vec<String>) -> Plage {
         clone: clone,
         build: build,
         install: install,
+        remove: remove,
+        list: list,
+        clean: clean,
     };
 
     return p;
 }
 
-fn cache() {
+fn cache(cd: bool) {
     let home;
     match env::var("HOME") {
         Ok(val) => home = val,
@@ -40,10 +58,21 @@ fn cache() {
     }
     let mut cache = home;
     cache.push_str("/.cache/plage");
-    if std::path::Path::new(&cache).exists() == false {
-        std::fs::create_dir(&cache).expect("Failed to create cache directory");
+
+    match cd {
+        true => {
+            if std::path::Path::new(&cache).exists() == false {
+                std::fs::create_dir(&cache).expect("Failed to create cache directory");
+            }
+            std::env::set_current_dir(cache).expect("Failed to open cache directory");
+        }
+
+        false => {
+            if !std::fs::remove_dir_all(cache).is_err() {
+                println!("Cache does not exist");
+            }
+        }
     }
-    std::env::set_current_dir(cache).expect("Failed to open cache directory");
 }
 
 fn run(path: &str, ar1: &str, ar2: &str) -> ExitStatus {
@@ -67,18 +96,36 @@ fn main() {
         _ => plage = find_ops(&args),
     }
 
+    if plage.clean {
+        cache(false);
+    }
+
     if args.len() <= 2{
         missing_args();
         return;
     }
 
-    cache();
+    cache(true);
+
+    if plage.list {
+        run("/usr/bin/pacman", "-Qs", args[2].as_str());
+        return;
+    }
+
+    if plage.remove {
+        let mut pacs: String = args[2].to_string();
+        for i in 3..args_len {
+            pacs.push(' ');
+            pacs.push_str(args[i].as_str());
+        }
+        run("/usr/bin/pacman", "-Rsu", pacs.as_str());
+        return;
+    }
 
     for i in 2..args_len {
         if plage.clone {
             if std::path::Path::new(&args[i]).exists() {
                 println!("{} already cloned", args[i]);
-                break;
             }
             let mut url = String::from("https://aur.archlinux.org/");
             url.push_str(args[i].as_str());
@@ -87,7 +134,7 @@ fn main() {
             if ecode.success() == false {
                 println!("plage: git exited with an error");
             }
-            cache();
+            cache(true);
         }
 
         if plage.build {
@@ -101,7 +148,7 @@ fn main() {
                 println!("makepkg failed");
                 return;
             }
-            cache();
+            cache(true);
         }
 
         if plage.install {
@@ -115,7 +162,7 @@ fn main() {
                 println!("makepkg failed");
                 return;
             }
-            cache();
+            cache(true);
         }
     }
 }
@@ -139,4 +186,7 @@ fn help() {
     println!("  -d              downloads packages NAME");
     println!("  -b              builds packages NAME");
     println!("  -i              installs packages NAME");
+    println!("  -r              removes packages NAME");
+    println!("  -l              list packages NAME");
+    println!("  -c              clean cache");
 }
