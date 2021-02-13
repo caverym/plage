@@ -20,7 +20,7 @@ fn find_ops(args: &Vec<String>) -> Plage {
     let mut list: bool = false;
     let mut clean: bool = false;
 
-    for i in 1..len {
+    for i in 0..len {
         match ops[i] {
             'l' => {
                 list = true; 
