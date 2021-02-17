@@ -1,6 +1,6 @@
+#![warn(clippy::all, clippy::pedantic)]
 use std::{env, process::ExitStatus};
 use std::process::Command;
-
 struct Plage {
     clone: bool,
     build: bool,
@@ -10,7 +10,7 @@ struct Plage {
     clean: bool,
 }
 
-fn find_ops(args: &Vec<String>) -> Plage {
+fn find_ops(args: &[String]) -> Option<Plage> {
     let ops: Vec<char> = args[1].chars().collect();
     let len = ops.len();
     let mut clone: bool = false;
@@ -34,20 +34,22 @@ fn find_ops(args: &Vec<String>) -> Plage {
             'd' => clone = true,
             'b' => build = true,
             'i' => install = true,
-            _ => invalid_args(args[1].to_string()),
+            _ => {
+                invalid_args(args[1].to_string());
+                return None;
+            }
         }
     }
 
     let p = Plage {
-        clone: clone,
-        build: build,
-        install: install,
-        remove: remove,
-        list: list,
-        clean: clean,
+        clone,
+        build,
+        install,
+        remove,
+        list,
+        clean,
     };
-
-    return p;
+    Some(p)
 }
 
 fn cache(cd: bool) {
@@ -82,7 +84,52 @@ fn run(path: &str, ar1: &str, ar2: &str) -> ExitStatus {
         .spawn()
         .expect("failed to execute Git");
     let ecode = child.wait().expect("Failed in wait");
-    return ecode;
+    ecode
+}
+
+fn plage_clone(args: &[String], i: usize) -> Option<bool> {
+    if std::path::Path::new(&args[i]).exists() {
+        println!("{} already cloned", args[i]);
+        return Some(true);
+    }
+    let mut url: String = String::from("https://aur.archlinux.org/");
+    url.push_str(args[i].as_str());
+    url.push_str(".git");
+    let ecode = run("/usr/bin/git", "clone", url.as_str());
+    if ecode.success() == false {
+        return Some(false);
+    }
+    return None;
+}
+
+fn plage_build(args: &[String], i: usize) -> Option<bool> {
+    if std::path::Path::new(&args[i]).exists() == false {
+        println!("{} does not exist", args[i]);
+        return Some(false);
+    }
+    std::env::set_current_dir(args[i].as_str())
+        .expect("Failed to change directory");
+    let ecode = run("/usr/bin/makepkg", "-sf", args[i].as_str());
+    if ecode.success() == false {
+        println!("makepkg failed");
+        return Some(true);
+    }
+    return None;
+}
+
+fn plage_install(args: &[String], i: usize) -> Option<bool> {
+    if std::path::Path::new(&args[i]).exists() == false {
+        println!("{} does not exist", args[i]);
+        return Some(false);
+    }
+    std::env::set_current_dir(args[i].as_str())
+        .expect("Failed to change directory");
+    let ecode = run("/usr/bin/makepkg", "-i", args[i].as_str());
+    if ecode.success() == false {
+        println!("makepkg failed");
+        return Some(true);
+    }
+    None
 }
 
 fn main() {
@@ -93,7 +140,12 @@ fn main() {
     match args[1].as_str() {
         "--help" => {help(); return}
         "--version" => {version(); return}
-        _ => plage = find_ops(&args),
+        _ => (),
+    }
+
+    match find_ops(&args) {
+        None => return,
+        Some(_struct) => plage = _struct,
     }
 
     if plage.clean {
@@ -124,45 +176,26 @@ fn main() {
 
     for i in 2..args_len {
         if plage.clone {
-            if std::path::Path::new(&args[i]).exists() {
-                println!("{} already cloned", args[i]);
+            match plage_clone(&args, i) {
+                Some(true) => cache(true),
+                Some(false) => return,
+                None => cache(true),
             }
-            let mut url = String::from("https://aur.archlinux.org/");
-            url.push_str(args[i].as_str());
-            url.push_str(".git");
-            let ecode = run("/usr/bin/git", "clone", url.as_str());
-            if ecode.success() == false {
-                println!("plage: git exited with an error");
-            }
-            cache(true);
         }
 
         if plage.build {
-            if std::path::Path::new(&args[i]).exists() == false {
-                println!("{} does not exist", args[i]);
+            match plage_build(&args, i) {
+                Some(true) => (),
+                Some(false) => return,
+                None => cache(true),
             }
-            std::env::set_current_dir(args[i].as_str())
-                .expect("Failed to change directory");
-            let ecode = run("/usr/bin/makepkg", "-sf", args[i].as_str());
-            if ecode.success() == false {
-                println!("makepkg failed");
-                return;
-            }
-            cache(true);
         }
 
         if plage.install {
-            if std::path::Path::new(&args[i]).exists() == false {
-                println!("{} does not exist", args[i]);
-            }
-            std::env::set_current_dir(args[i].as_str())
-                .expect("Failed to change directory");
-            let ecode = run("/usr/bin/makepkg", "-i", args[i].as_str());
-            if ecode.success() == false {
-                println!("makepkg failed");
-                return;
-            }
-            cache(true);
+            match plage_install(&args, i) {
+                None => cache(true),
+                _ => return,
+            }  
         }
     }
 }
