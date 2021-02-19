@@ -24,7 +24,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let len = args.len();
     let mut p: Plage = Plage {
-        args: args,
+        args,
         length: len,
         clone: false,
         build: false,
