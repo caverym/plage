@@ -2,87 +2,74 @@
 use plage::Plage;
 mod plage;
 
-fn cache(cd: bool) {
+fn cache() {
     let home: String;
     match std::env::var("HOME") {
         Ok(val) => home = val,
-        _ => panic!(),
+        Err(e) => panic!("{}", e),
     }
+
     let mut cache = home;
     cache.push_str("/.cache/plage");
 
-    if cd {
-        if !std::path::Path::new(&cache).exists() {
-            std::fs::create_dir(&cache)
-                .expect("Failed to create cache directory");
-        }
-        std::env::set_current_dir(cache)
-            .expect("Failed to open cache directory");
-    } else {
-        if !std::fs::remove_dir_all(cache).is_err() {
-            println!("Cache does not exist");
-        }
+    if !std::path::Path::new(&cache).exists() {
+        std::fs::create_dir(&cache)
+            .expect("Failed to create cache directory");
     }
+    std::env::set_current_dir(cache)
+        .expect("Failed to open cache directory");
 }
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let args_len = args.len();
+    let len = args.len();
     let mut p: Plage = Plage {
+        args: args,
+        length: len,
         clone: false,
         build: false,
-        install: false,
-        remove: false,
-        clean: false
+        install: false
     };
 
-    if args_len == 1 {
+    if p.length == 1 {
         missing_args();
         return;
     }
 
-    match args[1].as_str() {
+    match p.args[1].as_str() {
         "--help" => {help(); return}
         "--version" => {version(); return}
-        _ => (),
+        _ => println!("filling Plage..."),
     }
+
+    if p.new().is_err() {
+        invalid_args(&p.args[1]);
+        return;
+    }
+
+    if users::get_effective_uid() == 0 {
+        println!("cannot run as root");
+        return;
+    }
+
+    cache();
     
-    cache(true);
-
-    match p.new(&args) {
-        None => invalid_args(args[1].to_string()),
-        Some(_) => println!("Plage filled"),
-    }
-
-    if p.remove {
-        p.plage_remove(&args, args_len);
-        return;
-    }
-
-    if p.clean {
-        cache(false);
-        return;
-    }
-
-    for i in 2..args_len {
-        match p.plage_clone(&args, i) {
+    for i in 2..p.length {
+        match p.plage_clone(i) {
             Some(false) => return,
-            Some(true) => println!("plage: clone successful"),
+            Some(true) => cache(),
             None => (),
         }
-        cache(true);
-        match p.plage_build(&args, i) {
+        match p.plage_build(i) {
             Some(false) => return,
-            Some(true) => println!("plage: build successful"),
+            Some(true) => cache(),
             None => (),
         }
-        cache(true);
-        match p.plage_install(&args, i) {
+        match p.plage_install(i) {
             Some(false) => return,
-            Some(true) => println!("plage: install successful"),
+            Some(true) => cache(),
             None => (),
         }
-        cache(true);
     }
 }
 
@@ -91,7 +78,7 @@ fn missing_args() {
     println!("Try 'plage --help'");
 }
 
-fn invalid_args(a: String) {
+fn invalid_args(a: &str) {
     println!("plage: invalid argument {}", a);
     println!("Try 'plage --help'");
 } 
@@ -106,6 +93,4 @@ fn help() {
     println!("  b              builds packages NAME");
     println!("  i              installs packages NAME");
     println!("  r              removes packages NAME");
-    println!("  l              list packages NAME");
-    println!("  c              clean cache");
 }
