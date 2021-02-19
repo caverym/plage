@@ -1,5 +1,6 @@
 #![warn(clippy::all, clippy::pedantic)]
 use plage::Plage;
+use users::get_current_gid;
 mod plage;
 
 fn cache() {
@@ -47,7 +48,7 @@ fn main() {
         return;
     }
 
-    if users::get_effective_uid() == 0 {
+    if users::get_current_gid() == 0 {
         println!("cannot run as root");
         return;
     }
@@ -79,7 +80,7 @@ fn missing_args() {
 }
 
 fn invalid_args(a: &str) {
-    println!("plage: invalid argument {}", a);
+    println!("plage: invalid argument '{}'", a);
     println!("Try 'plage --help'");
 } 
 
