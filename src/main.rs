@@ -1,6 +1,4 @@
 #![warn(clippy::all, clippy::pedantic)]
-use plage::Plage;
-use users::get_current_gid;
 mod plage;
 
 fn cache() {
@@ -24,12 +22,13 @@ fn cache() {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let len = args.len();
-    let mut p: Plage = Plage {
+    let mut p: plage::Plage = plage::Plage {
         args,
         length: len,
         clone: false,
         build: false,
-        install: false
+        install: false,
+        verbose: false,
     };
 
     if p.length == 1 {
@@ -38,24 +37,35 @@ fn main() {
     }
 
     match p.args[1].as_str() {
-        "--help" => {help(); return}
-        "--version" => {version(); return}
-        _ => println!("filling Plage..."),
+        "--help" => {
+            help();
+            return;
+        }
+        "--version" => {
+            version();
+            return;
+        }
+        _ => (),
     }
 
+    println!("Initiating Plage struct...");
     if p.new().is_err() {
         invalid_args(&p.args[1]);
         return;
     }
+    if p.verbose {println!("Plage initiated\n{:?}", p)}
 
     if users::get_current_gid() == 0 {
         println!("cannot run as root");
         return;
     }
 
+    if p.verbose {println!("Change to cache directory")}
     cache();
-    
+
+    if p.verbose {println!("Running main loop")}
     for i in 2..p.length {
+        if p.verbose {println!("loop #{}", i-1)}
         match p.plage_clone(i) {
             Some(false) => return,
             Some(true) => cache(),
@@ -72,6 +82,7 @@ fn main() {
             None => (),
         }
     }
+    if p.verbose {println!("exited main loop")}
 }
 
 fn missing_args() {
@@ -82,7 +93,7 @@ fn missing_args() {
 fn invalid_args(a: &str) {
     println!("plage: invalid argument '{}'", a);
     println!("Try 'plage --help'");
-} 
+}
 
 fn version() {
     println!("Plage 1.0");
@@ -90,8 +101,10 @@ fn version() {
 
 fn help() {
     println!("Usage: plage [d, db, dbi, ...] [NAME...]\n");
-    println!("  d              downloads packages NAME");
+    println!("  a              download, build & install packages NAME");
+    println!("  A              same as `a` but verbose");
     println!("  b              builds packages NAME");
+    println!("  d              downloads packages NAME");
     println!("  i              installs packages NAME");
-    println!("  r              removes packages NAME");
+    println!("  v              use verbose output");
 }
