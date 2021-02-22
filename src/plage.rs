@@ -7,8 +7,7 @@ enum Action {
 
 fn run(path: &str, ar1: &str, ar2: &str) -> std::process::ExitStatus {
     let mut child: std::process::Child = std::process::Command::new(path)
-        .arg(ar1)
-        .arg(ar2)
+        .args(&[ar1, ar2])
         .spawn()
         .expect("failed to execute");
     child.wait().expect("failed to wait")
@@ -91,12 +90,9 @@ impl Plage {
     fn act_update(&self, package: &str) -> bool {
         std::env::set_current_dir(package)
             .expect("Failed to change directory");
-        let mut url: String = String::from("https://aur.archlinux.org/");
-        url.push_str(package);
-        url.push_str(".git");
         if self.verbose {println!("launching git")}
         let ecode: std::process::ExitStatus =
-            run("/usr/bin/git", "pull", &url);
+            run("/usr/bin/git", "pull", "--rebase");
         debug_assert!(ecode.success());
         if !ecode.success() {
             println!("git exit error");
