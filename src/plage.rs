@@ -1,18 +1,3 @@
-// plage struct
-
-enum Action {
-    Clone,
-    Update,
-}
-
-fn run(path: &str, ar1: &str, ar2: &str) -> std::process::ExitStatus {
-    let mut child: std::process::Child = std::process::Command::new(path)
-        .args(&[ar1, ar2])
-        .spawn()
-        .expect("failed to execute");
-    child.wait().expect("failed to wait")
-}
-
 #[derive(Debug)]
 pub struct Plage {
     pub(crate) args: Vec<String>,
@@ -21,6 +6,14 @@ pub struct Plage {
     pub(crate) build: bool,
     pub(crate) install: bool,
     pub(crate) verbose: bool,
+}
+
+fn run(path: &str, ar1: &str, ar2: &str) -> std::process::ExitStatus {
+    let mut child: std::process::Child = std::process::Command::new(path)
+        .args(&[ar1, ar2])
+        .spawn()
+        .expect("failed to execute");
+    child.wait().expect("failed to wait")
 }
 
 impl Plage {
@@ -53,32 +46,38 @@ impl Plage {
                 _ => return Err(()),
             }
         }
-        if self.verbose {println!("verbose mode enabled")}
+        if self.verbose {
+            println!("verbose mode enabled")
+        }
         Ok(self)
     }
 
     pub fn plage_clone(&self, i: usize) -> Option<bool> {
         if !self.clone {
-            if self.verbose {println!("`plage_clone` returns None")}
+            if self.verbose {
+                println!("`plage_clone` returns None")
+            }
             return None;
         }
-        let mut act: Action = Action::Clone;
+        let mut act: bool = true;
         if std::path::Path::new(&self.args[i]).exists() {
-            act = Action::Update;
+            act = false;
         }
-        match act {
-            Action::Clone => Some(self.act_clone(self.args[i].as_str())),
-            Action::Update => Some(self.act_update(self.args[i].as_str())),
+
+        if act {
+            return Some(self.act_clone(&self.args[i]));
         }
+        Some(self.act_update(&self.args[i]))
     }
 
     fn act_clone(&self, package: &str) -> bool {
         let mut url: String = String::from("https://aur.archlinux.org/");
         url.push_str(package);
         url.push_str(".git");
-        if self.verbose {println!("launching git")}
-        let ecode: std::process::ExitStatus =
-            run("/usr/bin/git", "clone", &url);
+        if self.verbose {
+            println!("launching git")
+        }
+        let ecode: std::process::ExitStatus = run("/usr/bin/git", "clone", &url);
         debug_assert!(ecode.success());
         if !ecode.success() {
             println!("git exit error");
@@ -88,11 +87,11 @@ impl Plage {
     }
 
     fn act_update(&self, package: &str) -> bool {
-        std::env::set_current_dir(package)
-            .expect("Failed to change directory");
-        if self.verbose {println!("launching git")}
-        let ecode: std::process::ExitStatus =
-            run("/usr/bin/git", "pull", "--rebase");
+        std::env::set_current_dir(package).expect("Failed to change directory");
+        if self.verbose {
+            println!("launching git")
+        }
+        let ecode: std::process::ExitStatus = run("/usr/bin/git", "pull", "--rebase");
         debug_assert!(ecode.success());
         if !ecode.success() {
             println!("git exit error");
@@ -103,18 +102,20 @@ impl Plage {
 
     pub fn plage_build(&self, i: usize) -> Option<bool> {
         if !self.build {
-            if self.verbose {println!("`plage_build` returns none")}
+            if self.verbose {
+                println!("`plage_build` returns none")
+            }
             return None;
         }
         if !std::path::Path::new(&self.args[i]).exists() {
             println!("{} does not exist", self.args[i]);
             return Some(false);
         }
-        std::env::set_current_dir(self.args[i].as_str())
-            .expect("failed to change directory");
-        if self.verbose {println!("launching makepkg")}
-        let ecode: std::process::ExitStatus  =
-            run("/usr/bin/makepkg", "-sf", self.args[i].as_str());
+        std::env::set_current_dir(self.args[i].as_str()).expect("failed to change directory");
+        if self.verbose {
+            println!("launching makepkg")
+        }
+        let ecode: std::process::ExitStatus = run("/usr/bin/makepkg", "-sf", self.args[i].as_str());
         debug_assert!(ecode.success());
         if !ecode.success() {
             println!("makepkg exit error");
@@ -125,18 +126,20 @@ impl Plage {
 
     pub fn plage_install(&self, i: usize) -> Option<bool> {
         if !self.install {
-            if self.verbose {println!("`plage_install` returns none")}
+            if self.verbose {
+                println!("`plage_install` returns none")
+            }
             return None;
         }
         if !std::path::Path::new(&self.args[i]).exists() {
             println!("{} does not exist", self.args[i]);
             return Some(false);
         }
-        std::env::set_current_dir(self.args[i].as_str())
-            .expect("failed to change directory");
-        if self.verbose {println!("launching makepkg")}
-        let ecode: std::process::ExitStatus =
-            run("/usr/bin/makepkg", "-i", self.args[i].as_str());
+        std::env::set_current_dir(self.args[i].as_str()).expect("failed to change directory");
+        if self.verbose {
+            println!("launching makepkg")
+        }
+        let ecode: std::process::ExitStatus = run("/usr/bin/makepkg", "-i", self.args[i].as_str());
         debug_assert!(ecode.success());
         if !ecode.success() {
             println!("makepkg exit error");

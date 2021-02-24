@@ -12,11 +12,9 @@ fn cache() {
     cache.push_str("/.cache/plage");
 
     if !std::path::Path::new(&cache).exists() {
-        std::fs::create_dir(&cache)
-            .expect("Failed to create cache directory");
+        std::fs::create_dir(&cache).expect("Failed to create cache directory");
     }
-    std::env::set_current_dir(cache)
-        .expect("Failed to open cache directory");
+    std::env::set_current_dir(cache).expect("Failed to open cache directory");
 }
 
 fn main() {
@@ -37,11 +35,11 @@ fn main() {
     }
 
     match p.args[1].as_str() {
-        "--help" => {
+        "--help" | "-h" => {
             help();
             return;
         }
-        "--version" => {
+        "--version" | "-v" => {
             version();
             return;
         }
@@ -53,19 +51,27 @@ fn main() {
         invalid_args(&p.args[1]);
         return;
     }
-    if p.verbose {println!("Plage initiated\n{:?}", p)}
+    if p.verbose {
+        println!("Plage initiated\n{:?}", p)
+    }
 
     if users::get_current_gid() == 0 {
         println!("cannot run as root");
         return;
     }
 
-    if p.verbose {println!("Change to cache directory")}
+    if p.verbose {
+        println!("Change to cache directory")
+    }
     cache();
 
-    if p.verbose {println!("Running main loop")}
+    if p.verbose {
+        println!("Running main loop")
+    }
     for i in 2..p.length {
-        if p.verbose {println!("loop #{}", i-1)}
+        if p.verbose {
+            println!("loop #{}", i - 1)
+        }
         match p.plage_clone(i) {
             Some(false) => return,
             Some(true) => cache(),
@@ -82,7 +88,9 @@ fn main() {
             None => (),
         }
     }
-    if p.verbose {println!("exited main loop")}
+    if p.verbose {
+        println!("exited main loop")
+    }
 }
 
 fn missing_args() {
