@@ -23,11 +23,6 @@ impl Plage {
 
         for i in 0..len {
             match ops.get(i).unwrap() {
-                'd' => self.clone = true,
-                'b' => self.build = true,
-                'i' => self.install = true,
-                'v' => self.verbose = true,
-
                 'a' => {
                     self.clone = true;
                     self.build = true;
@@ -43,6 +38,11 @@ impl Plage {
                     self.verbose = true;
                     break;
                 }
+
+                'b' => self.build = true,
+                'd' => self.clone = true,
+                'i' => self.install = true,
+                'v' => self.verbose = true,
                 _ => return Err(()),
             }
         }
@@ -59,27 +59,18 @@ impl Plage {
             }
             return None;
         }
-        let mut act: bool = true;
-        if std::path::Path::new(&self.args[i]).exists() {
-            act = false;
-        }
-
-        if act {
+        if !std::path::Path::new(&self.args[i]).exists() {
             return Some(self.act_clone(&self.args[i]));
         }
         Some(self.act_update(&self.args[i]))
     }
 
     fn act_clone(&self, package: &str) -> bool {
-        let mut url: String = String::from("https://aur.archlinux.org/");
-        url.push_str(package);
-        url.push_str(".git");
+        let url: String = format!("https://aur.archlinux.org/{}.git", package);
         if self.verbose {
             println!("launching git")
         }
-        let ecode: std::process::ExitStatus = run("/usr/bin/git", "clone", &url);
-        debug_assert!(ecode.success());
-        if !ecode.success() {
+        if !run("/usr/bin/git", "clone", &url).success() {
             println!("git exit error");
             return false;
         }
@@ -91,9 +82,7 @@ impl Plage {
         if self.verbose {
             println!("launching git")
         }
-        let ecode: std::process::ExitStatus = run("/usr/bin/git", "pull", "--rebase");
-        debug_assert!(ecode.success());
-        if !ecode.success() {
+        if !run("/usr/bin/git", "pull", "--rebase").success() {
             println!("git exit error");
             return false;
         }
@@ -115,9 +104,7 @@ impl Plage {
         if self.verbose {
             println!("launching makepkg")
         }
-        let ecode: std::process::ExitStatus = run("/usr/bin/makepkg", "-sf", self.args[i].as_str());
-        debug_assert!(ecode.success());
-        if !ecode.success() {
+        if !run("/usr/bin/makepkg", "-sf", self.args[i].as_str()).success() {
             println!("makepkg exit error");
             return Some(false);
         }
@@ -139,9 +126,7 @@ impl Plage {
         if self.verbose {
             println!("launching makepkg")
         }
-        let ecode: std::process::ExitStatus = run("/usr/bin/makepkg", "-i", self.args[i].as_str());
-        debug_assert!(ecode.success());
-        if !ecode.success() {
+        if !run("/usr/bin/makepkg", "-i", self.args[i].as_str()).success() {
             println!("makepkg exit error");
             return Some(false);
         }

@@ -8,8 +8,7 @@ fn cache() {
         Err(e) => panic!("{}", e),
     }
 
-    let mut cache = home;
-    cache.push_str("/.cache/plage");
+    let cache = format!("{}/.cache/plage", home);
 
     if !std::path::Path::new(&cache).exists() {
         std::fs::create_dir(&cache).expect("Failed to create cache directory");
@@ -46,7 +45,6 @@ fn main() {
         _ => (),
     }
 
-    println!("Initiating Plage struct...");
     if p.new().is_err() {
         invalid_args(&p.args[1]);
         return;
