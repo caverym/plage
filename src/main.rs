@@ -1,5 +1,6 @@
 #![warn(clippy::all, clippy::pedantic)]
 mod plage;
+use lliw::*;
 
 fn cache() {
     let home: String;
@@ -50,25 +51,26 @@ fn main() {
         return;
     }
     if p.verbose {
-        println!("Plage initiated\n{:?}", p)
+        println!("{}Plage:{} initiated\n{:?}",  Fg::Cyan, Fg::Reset, p)
+
     }
 
     if users::get_current_gid() == 0 {
-        println!("cannot run as root");
+        println!("{}Error:{} cannot run as root", Fg::Red, Fg::Reset);
         return;
     }
 
     if p.verbose {
-        println!("Change to cache directory")
+        println!("{}Plage:{} Change to cache directory", Fg::Cyan, Fg::Reset)
     }
     cache();
 
     if p.verbose {
-        println!("Running main loop")
+        println!("{}Plage:{} Running main loop", Fg::Cyan, Fg::Reset)
     }
     for i in 2..p.length {
         if p.verbose {
-            println!("loop #{}", i - 1)
+            println!("{}Plage:{} loop #{}", Fg::Cyan, Fg::Reset, i - 1)
         }
         match p.plage_clone(i) {
             Some(false) => return,
@@ -87,17 +89,17 @@ fn main() {
         }
     }
     if p.verbose {
-        println!("exited main loop")
+        println!("{}Plage:{} exited main loop", Fg::Cyan, Fg::Reset)
     }
 }
 
 fn missing_args() {
-    println!("plage: not enough arguments");
+    println!("{}Plage:{} not enough arguments", Fg::Cyan, Fg::Reset);
     println!("Try 'plage --help'");
 }
 
 fn invalid_args(a: &str) {
-    println!("plage: invalid argument '{}'", a);
+    println!("{}Plage:{} invalid argument '{}'", Fg::Cyan, Fg::Reset, a);
     println!("Try 'plage --help'");
 }
 
