@@ -1,6 +1,6 @@
 #![warn(clippy::all, clippy::pedantic)]
 mod plage;
-use lliw::*;
+use lliw::Fg;
 
 fn cache() {
     let home: String;
@@ -51,8 +51,7 @@ fn main() {
         return;
     }
     if p.verbose {
-        println!("{}Plage:{} initiated\n{:?}",  Fg::Cyan, Fg::Reset, p)
-
+        println!("{}Plage:{} initiated\n{:?}", Fg::Cyan, Fg::Reset, p)
     }
 
     if users::get_current_gid() == 0 {

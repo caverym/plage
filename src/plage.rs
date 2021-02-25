@@ -1,4 +1,4 @@
-use lliw::*;
+use lliw::Fg;
 #[derive(Debug)]
 pub struct Plage {
     pub(crate) args: Vec<String>,
@@ -56,7 +56,11 @@ impl Plage {
     pub fn plage_clone(&self, i: usize) -> Option<bool> {
         if !self.clone {
             if self.verbose {
-                println!("{}Warning:{} `plage_clone` returns None", Fg::Yellow, Fg::Reset)
+                println!(
+                    "{}Warning:{} `plage_clone` returns None",
+                    Fg::Yellow,
+                    Fg::Reset
+                )
             }
             return None;
         }
@@ -93,12 +97,21 @@ impl Plage {
     pub fn plage_build(&self, i: usize) -> Option<bool> {
         if !self.build {
             if self.verbose {
-                println!("{}Warning:{} `plage_build` returns none", Fg::Yellow, Fg::Reset)
+                println!(
+                    "{}Warning:{} `plage_build` returns none",
+                    Fg::Yellow,
+                    Fg::Reset
+                )
             }
             return None;
         }
         if !std::path::Path::new(&self.args[i]).exists() {
-            println!("{}Plage:{} {} does not exist", Fg::Cyan, Fg::Reset, self.args[i]);
+            println!(
+                "{}Plage:{} {} does not exist",
+                Fg::Cyan,
+                Fg::Reset,
+                self.args[i]
+            );
             return Some(false);
         }
         std::env::set_current_dir(self.args[i].as_str()).expect("failed to change directory");
@@ -115,12 +128,21 @@ impl Plage {
     pub fn plage_install(&self, i: usize) -> Option<bool> {
         if !self.install {
             if self.verbose {
-                println!("{}Warning:{} `plage_install` returns none", Fg::Yellow, Fg::Reset)
+                println!(
+                    "{}Warning:{} `plage_install` returns none",
+                    Fg::Yellow,
+                    Fg::Reset
+                )
             }
             return None;
         }
         if !std::path::Path::new(&self.args[i]).exists() {
-            println!("{}Plage:{} {} does not exist", Fg::Cyan, Fg::Reset, self.args[i]);
+            println!(
+                "{}Plage:{} {} does not exist",
+                Fg::Cyan,
+                Fg::Reset,
+                self.args[i]
+            );
             return Some(false);
         }
         std::env::set_current_dir(self.args[i].as_str()).expect("failed to change directory");
